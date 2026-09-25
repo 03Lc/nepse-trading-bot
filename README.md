@@ -9,7 +9,7 @@ Do not bypass TMS authentication, CAPTCHA, 2FA, or use unauthorized endpoints.
 No profitability claims are made.
 
 **Repository:** https://github.com/03Lc/nepse-trading-bot  
-**Full specification:** [docs/SPEC.md](docs/SPEC.md) (includes real-time / low-latency requirements)
+**Full specification:** [docs/SPEC.md](docs/SPEC.md)
 
 ---
 
@@ -23,8 +23,6 @@ No profitability claims are made.
 - Analysis is separate from order execution.
 - Never invent missing financial data — metrics carry status (`ok` / `insufficient_data` / `unavailable`).
 
-See [docs/SPEC.md](docs/SPEC.md) for complete requirements.
-
 ---
 
 ## Status
@@ -36,9 +34,10 @@ See [docs/SPEC.md](docs/SPEC.md) for complete requirements.
 | 2 — Data layer (CSV ingest, clean, SQLite) | Done |
 | 3 — Indicators + technical engine | **Done** |
 | 4 — Fundamental + valuation engine | **Done** |
-| 5 — Market / sector analysis | Next |
-| Real-time feed + event pipeline | Planned (see SPEC §2, §5) |
-| 6+ — Signal rules, scanner, risk, paper, dashboard | Planned |
+| 5 — Market / sector analysis | **Done** |
+| 6 — Signal / rule engine | Next |
+| Real-time feed + event pipeline | Planned |
+| 7+ — Scanner, risk, paper, dashboard | Planned |
 
 ---
 
@@ -65,6 +64,8 @@ python -m nepse_bot --list-symbols
 python -m nepse_bot --analyze-technical --symbol NABIL
 python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sample.csv
 python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
+python -m nepse_bot --ingest-benchmark-csv data/samples/NEPSE_index_sample.csv --benchmark-id NEPSE
+python -m nepse_bot --analyze-market --symbol NABIL --sector commercial_bank
 ```
 
 ## Tests
