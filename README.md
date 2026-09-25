@@ -1,6 +1,7 @@
 # NEPSE Trading Bot
 
-Modular research / backtesting / paper-trading system for the Nepal Stock Exchange (NEPSE).
+Modular **NEPSE Real-Time Market Intelligence and Trading Analysis System**
+(research / backtesting / paper-trading foundation).
 
 **Default mode: `paper`.** Live automated retail order execution is **not** currently verified as supported via an official broker/NEPSE trading API. Live mode is blocked in code until that changes.
 
@@ -20,9 +21,9 @@ No profitability claims are made.
 - Event-driven, concurrent monitoring of the watchlist (incremental updates).
 - Measure latency (data age, processing, alerts); fail closed on stale data.
 - Analysis is separate from order execution.
+- Never invent missing financial data — metrics carry status (`ok` / `insufficient_data` / `unavailable`).
 
-See [docs/SPEC.md](docs/SPEC.md) for the complete requirements on streaming data,
-concurrency, alert priority, deduplication, integrity, and dashboard metrics.
+See [docs/SPEC.md](docs/SPEC.md) for complete requirements.
 
 ---
 
@@ -33,12 +34,12 @@ concurrency, alert priority, deduplication, integrity, and dashboard metrics.
 | 0 — Feasibility / regulations | Done |
 | 1 — Skeleton, config, logging, hours, costs | Done |
 | 2 — Data layer (CSV ingest, clean, SQLite) | Done |
-| 3 — Indicators + strategies | Next |
+| 3 — Indicators + technical engine | **Done** |
+| 4 — Fundamental + valuation engine | Next |
 | Real-time feed + event pipeline | Planned (see SPEC §2, §5) |
-| 4+ — Risk, backtest, paper, dashboard | Planned |
+| 5+ — Signal rules, scanner, risk, paper, dashboard | Planned |
 
-**Note:** Phase 2 is historical/research data. Real-time concurrent scanning
-and measured low-latency alerts are specified in SPEC and not yet implemented.
+**Note:** Phase 3 is batch technical analysis on historical OHLCV. Real-time concurrent scanning is specified in SPEC and not yet implemented.
 
 ---
 
@@ -62,6 +63,7 @@ python -m nepse_bot --estimate-cost 100 500 buy
 python scripts/generate_sample_ohlcv.py --symbol NABIL --days 120
 python -m nepse_bot --ingest-csv data/samples/NABIL_sample.csv --symbol NABIL
 python -m nepse_bot --list-symbols
+python -m nepse_bot --analyze-technical --symbol NABIL
 ```
 
 ## Tests
