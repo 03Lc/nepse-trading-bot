@@ -1,0 +1,12 @@
+# NEPSE Bot - Phase 1+2 dependencies
+# Python 3.11+ recommended
+
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+PyYAML>=6.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
