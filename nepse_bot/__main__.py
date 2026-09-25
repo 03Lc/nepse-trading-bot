@@ -7,6 +7,7 @@ Usage:
   python -m nepse_bot --estimate-cost 100 500 buy
   python -m nepse_bot --ingest-csv data/samples/NABIL_sample.csv --symbol NABIL
   python -m nepse_bot --list-symbols
+  python -m nepse_bot --analyze-technical --symbol NABIL
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from nepse_bot.data.ingestion.csv_loader import CSVHistoricalLoader
 from nepse_bot.data.repository import MarketDataRepository
 from nepse_bot.market.costs import TransactionCostModel
 from nepse_bot.market.hours import MarketHours
+from nepse_bot.indicators.engine import TechnicalEngine
 from nepse_bot.monitoring import setup_logging, get_logger
 
 
@@ -31,6 +33,7 @@ def main() -> None:
     parser.add_argument("--symbol")
     parser.add_argument("--list-symbols", action="store_true")
     parser.add_argument("--db", default=None)
+    parser.add_argument("--analyze-technical", action="store_true")
     args = parser.parse_args()
 
     settings = get_settings(reload=True)
@@ -38,10 +41,15 @@ def main() -> None:
     log = get_logger("cli")
     log.info("NEPSE Bot v0.1.0 | mode=%s | live_allowed=%s", settings.bot_mode, settings.is_live_allowed())
 
-    no_action = not any([args.check_hours, args.estimate_cost, args.ingest_csv, args.list_symbols])
+    no_action = not any([
+        args.check_hours,
+        args.estimate_cost,
+        args.ingest_csv,
+        args.list_symbols,
+        args.analyze_technical,
+    ])
     if args.show_config or no_action:
         market = settings.market()
-        risk = settings.risk()
         print("--- Config snapshot ---")
         print(f"  mode          : {settings.bot_mode}")
         print(f"  timezone      : {settings.timezone}")
@@ -62,7 +70,7 @@ def main() -> None:
         qty_s, price_s, side = args.estimate_cost
         model = TransactionCostModel.from_config(settings.costs())
         breakdown = model.estimate(int(qty_s), float(price_s), side)
-        print(f"\n--- Cost estimate ---")
+        print("\n--- Cost estimate ---")
         for k, v in breakdown.as_dict().items():
             print(f"  {k:16s}: {v}")
 
@@ -81,6 +89,21 @@ def main() -> None:
         print(f"\nDB: {db_path}")
         for s in symbols:
             print(f"  {s}: {repo.bar_count(s)} bars")
+
+    if args.analyze_technical:
+        if not args.symbol:
+            print("ERROR: --analyze-technical requires --symbol")
+        else:
+            repo = MarketDataRepository(db_path=db_path)
+            bars = repo.get_bars(args.symbol)
+            if bars.empty:
+                print(f"No bars for {args.symbol} in {db_path}")
+            else:
+                eng = TechnicalEngine()
+                snap = eng.compute(bars, symbol=args.symbol)
+                print()
+                for line in snap.summary_lines():
+                    print(line)
 
     log.info("CLI finished")
 
