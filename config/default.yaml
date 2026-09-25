@@ -58,3 +58,21 @@ logging:
   date_format: "%Y-%m-%d %H:%M:%S"
   rotation: daily
   retention_days: 14
+
+indicators:
+  sma_periods: [20, 50, 200]
+  ema_periods: [9, 21, 50, 200]
+  rsi_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  atr_period: 14
+  adx_period: 14
+  stoch_k: 14
+  stoch_d: 3
+  roc_period: 12
+  momentum_period: 10
+  rvol_period: 20
+  sr_lookback: 20
+  week_52_bars: 252
+  gap_min_pct: 0.5
