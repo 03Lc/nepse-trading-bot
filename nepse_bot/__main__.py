@@ -10,6 +10,8 @@ Usage:
   python -m nepse_bot --analyze-technical --symbol NABIL
   python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sample.csv
   python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
+  python -m nepse_bot --ingest-benchmark-csv data/samples/NEPSE_index_sample.csv --benchmark-id NEPSE
+  python -m nepse_bot --analyze-market --symbol NABIL --sector commercial_bank
 """
 
 from __future__ import annotations
@@ -26,6 +28,9 @@ from nepse_bot.indicators.engine import TechnicalEngine
 from nepse_bot.fundamentals.engine import FundamentalEngine
 from nepse_bot.fundamentals.loader import load_fundamentals_csv
 from nepse_bot.fundamentals.store import FundamentalStore
+from nepse_bot.market_analysis.engine import MarketAnalysisEngine
+from nepse_bot.market_analysis.benchmarks import BenchmarkStore
+from nepse_bot.market_analysis.loader import load_benchmark_csv
 from nepse_bot.monitoring import setup_logging, get_logger
 
 
@@ -43,6 +48,11 @@ def main() -> None:
     parser.add_argument("--ingest-fundamentals-csv", metavar="PATH")
     parser.add_argument("--price", type=float, default=None, help="Last price for valuation ratios")
     parser.add_argument("--fund-db", default=None)
+    parser.add_argument("--analyze-market", action="store_true")
+    parser.add_argument("--ingest-benchmark-csv", metavar="PATH")
+    parser.add_argument("--benchmark-id", default="NEPSE")
+    parser.add_argument("--benchmark-db", default=None)
+    parser.add_argument("--sector", default=None, help="Sector value e.g. commercial_bank")
     args = parser.parse_args()
 
     settings = get_settings(reload=True)
@@ -58,6 +68,8 @@ def main() -> None:
         args.analyze_technical,
         args.analyze_fundamental,
         args.ingest_fundamentals_csv,
+        args.analyze_market,
+        args.ingest_benchmark_csv,
     ])
     if args.show_config or no_action:
         market = settings.market()
@@ -135,6 +147,40 @@ def main() -> None:
             print()
             for line in snap.summary_lines():
                 print(line)
+
+    bench_db = args.benchmark_db or str(Path(settings.data_dir) / "nepse_benchmarks.db")
+
+    if args.ingest_benchmark_csv:
+        bstore = BenchmarkStore(db_path=bench_db)
+        n = load_benchmark_csv(
+            args.ingest_benchmark_csv, bstore, benchmark_id=args.benchmark_id
+        )
+        print(f"\nIngested {n} benchmark bars for {args.benchmark_id} into {bench_db}")
+        print(f"Benchmarks: {bstore.list_benchmarks()}")
+
+    if args.analyze_market:
+        if not args.symbol:
+            print("ERROR: --analyze-market requires --symbol")
+        else:
+            repo = MarketDataRepository(db_path=db_path)
+            bars = repo.get_bars(args.symbol)
+            if bars.empty:
+                print(f"No OHLCV for {args.symbol} in {db_path}")
+            else:
+                bstore = BenchmarkStore(db_path=bench_db)
+                eng = MarketAnalysisEngine(benchmarks=bstore)
+                sector = args.sector
+                if sector is None:
+                    try:
+                        prof = FundamentalStore(db_path=fund_db).get_profile(args.symbol)
+                        if prof:
+                            sector = prof.sector.value
+                    except Exception:
+                        pass
+                snap = eng.analyze_symbol(args.symbol, bars, sector=sector)
+                print()
+                for line in snap.summary_lines():
+                    print(line)
 
     log.info("CLI finished")
 
