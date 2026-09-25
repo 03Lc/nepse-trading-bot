@@ -22,6 +22,7 @@ No profitability claims are made.
 - Measure latency (data age, processing, alerts); fail closed on stale data.
 - Analysis is separate from order execution.
 - Never invent missing financial data — metrics carry status (`ok` / `insufficient_data` / `unavailable`).
+- Signals are explainable labels, not profit guarantees.
 
 ---
 
@@ -35,9 +36,10 @@ No profitability claims are made.
 | 3 — Indicators + technical engine | **Done** |
 | 4 — Fundamental + valuation engine | **Done** |
 | 5 — Market / sector analysis | **Done** |
-| 6 — Signal / rule engine | Next |
+| 6 — Signal / rule engine | **Done** |
+| 7 — Concurrent scanner / event architecture | Next |
 | Real-time feed + event pipeline | Planned |
-| 7+ — Scanner, risk, paper, dashboard | Planned |
+| 8+ — Risk, backtest, paper, dashboard | Planned |
 
 ---
 
@@ -66,6 +68,7 @@ python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sa
 python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
 python -m nepse_bot --ingest-benchmark-csv data/samples/NEPSE_index_sample.csv --benchmark-id NEPSE
 python -m nepse_bot --analyze-market --symbol NABIL --sector commercial_bank
+python -m nepse_bot --analyze-signal --symbol NABIL --price 500
 ```
 
 ## Tests

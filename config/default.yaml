@@ -76,3 +76,26 @@ indicators:
   sr_lookback: 20
   week_52_bars: 252
   gap_min_pct: 0.5
+
+signals:
+  rsi_buy_min: 40.0
+  rsi_buy_max: 70.0
+  rsi_oversold: 30.0
+  rsi_overbought: 70.0
+  min_relative_volume: 1.2
+  require_above_ema50: true
+  require_above_ema200: false
+  prefer_breakout: true
+  adx_trend_min: 20.0
+  require_positive_eps_growth: false
+  require_positive_roe: false
+  max_pe: null
+  max_pb: null
+  prefer_outperform_nepse_20d: true
+  avoid_strong_downtrend_market: true
+  buy_setup_min_passed: 5
+  buy_setup_max_failed: 2
+  watch_min_passed: 3
+  sell_setup_min_failed_bullish: 4
+  atr_stop_mult: 1.5
+  atr_target_mult: 2.5
