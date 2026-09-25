@@ -7,7 +7,22 @@ Modular research / backtesting / paper-trading system for the Nepal Stock Exchan
 Do not bypass TMS authentication, CAPTCHA, 2FA, or use unauthorized endpoints.
 No profitability claims are made.
 
-**Repository:** https://github.com/03Lc/nepse-trading-bot
+**Repository:** https://github.com/03Lc/nepse-trading-bot  
+**Full specification:** [docs/SPEC.md](docs/SPEC.md) (includes real-time / low-latency requirements)
+
+---
+
+## Design principles
+
+**FAST + CORRECT + TRACEABLE**
+
+- Prefer official market-data feeds; never claim delayed data is real-time.
+- Event-driven, concurrent monitoring of the watchlist (incremental updates).
+- Measure latency (data age, processing, alerts); fail closed on stale data.
+- Analysis is separate from order execution.
+
+See [docs/SPEC.md](docs/SPEC.md) for the complete requirements on streaming data,
+concurrency, alert priority, deduplication, integrity, and dashboard metrics.
 
 ---
 
@@ -19,7 +34,11 @@ No profitability claims are made.
 | 1 — Skeleton, config, logging, hours, costs | Done |
 | 2 — Data layer (CSV ingest, clean, SQLite) | Done |
 | 3 — Indicators + strategies | Next |
+| Real-time feed + event pipeline | Planned (see SPEC §2, §5) |
 | 4+ — Risk, backtest, paper, dashboard | Planned |
+
+**Note:** Phase 2 is historical/research data. Real-time concurrent scanning
+and measured low-latency alerts are specified in SPEC and not yet implemented.
 
 ---
 
