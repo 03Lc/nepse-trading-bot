@@ -2,22 +2,16 @@
 CLI entry point.
 
 Usage:
-  python -m nepse_bot
-  python -m nepse_bot --check-hours
-  python -m nepse_bot --estimate-cost 100 500 buy
-  python -m nepse_bot --ingest-csv data/samples/NABIL_sample.csv --symbol NABIL
-  python -m nepse_bot --list-symbols
-  python -m nepse_bot --analyze-technical --symbol NABIL
-  python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sample.csv
-  python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
-  python -m nepse_bot --ingest-benchmark-csv data/samples/NEPSE_index_sample.csv --benchmark-id NEPSE
-  python -m nepse_bot --analyze-market --symbol NABIL --sector commercial_bank
+  python -m nepse_bot --analyze-signal --symbol NABIL --price 500
+  (see README for full command list)
 """
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
+import yaml
 
 from nepse_bot.config import get_settings
 from nepse_bot.data.ingestion.csv_loader import CSVHistoricalLoader
@@ -31,7 +25,17 @@ from nepse_bot.fundamentals.store import FundamentalStore
 from nepse_bot.market_analysis.engine import MarketAnalysisEngine
 from nepse_bot.market_analysis.benchmarks import BenchmarkStore
 from nepse_bot.market_analysis.loader import load_benchmark_csv
+from nepse_bot.signals.engine import SignalEngine
+from nepse_bot.signals.rules import RuleConfig
 from nepse_bot.monitoring import setup_logging, get_logger
+
+
+def _load_signal_config() -> RuleConfig:
+    ypath = Path("config/default.yaml")
+    if ypath.exists():
+        data = yaml.safe_load(ypath.read_text()) or {}
+        return RuleConfig.from_dict(data.get("signals"))
+    return RuleConfig()
 
 
 def main() -> None:
@@ -46,13 +50,14 @@ def main() -> None:
     parser.add_argument("--analyze-technical", action="store_true")
     parser.add_argument("--analyze-fundamental", action="store_true")
     parser.add_argument("--ingest-fundamentals-csv", metavar="PATH")
-    parser.add_argument("--price", type=float, default=None, help="Last price for valuation ratios")
+    parser.add_argument("--price", type=float, default=None)
     parser.add_argument("--fund-db", default=None)
     parser.add_argument("--analyze-market", action="store_true")
     parser.add_argument("--ingest-benchmark-csv", metavar="PATH")
     parser.add_argument("--benchmark-id", default="NEPSE")
     parser.add_argument("--benchmark-db", default=None)
-    parser.add_argument("--sector", default=None, help="Sector value e.g. commercial_bank")
+    parser.add_argument("--sector", default=None)
+    parser.add_argument("--analyze-signal", action="store_true")
     args = parser.parse_args()
 
     settings = get_settings(reload=True)
@@ -61,15 +66,9 @@ def main() -> None:
     log.info("NEPSE Bot v0.1.0 | mode=%s | live_allowed=%s", settings.bot_mode, settings.is_live_allowed())
 
     no_action = not any([
-        args.check_hours,
-        args.estimate_cost,
-        args.ingest_csv,
-        args.list_symbols,
-        args.analyze_technical,
-        args.analyze_fundamental,
-        args.ingest_fundamentals_csv,
-        args.analyze_market,
-        args.ingest_benchmark_csv,
+        args.check_hours, args.estimate_cost, args.ingest_csv, args.list_symbols,
+        args.analyze_technical, args.analyze_fundamental, args.ingest_fundamentals_csv,
+        args.analyze_market, args.ingest_benchmark_csv, args.analyze_signal,
     ])
     if args.show_config or no_action:
         market = settings.market()
@@ -98,6 +97,8 @@ def main() -> None:
             print(f"  {k:16s}: {v}")
 
     db_path = args.db or str(Path(settings.data_dir) / "nepse_ohlcv.db")
+    fund_db = args.fund_db or str(Path(settings.data_dir) / "nepse_fundamentals.db")
+    bench_db = args.benchmark_db or str(Path(settings.data_dir) / "nepse_benchmarks.db")
 
     if args.ingest_csv:
         loader = CSVHistoricalLoader(Path(args.ingest_csv), default_symbol=args.symbol)
@@ -108,27 +109,22 @@ def main() -> None:
 
     if args.list_symbols:
         repo = MarketDataRepository(db_path=db_path)
-        symbols = repo.list_symbols()
         print(f"\nDB: {db_path}")
-        for s in symbols:
+        for s in repo.list_symbols():
             print(f"  {s}: {repo.bar_count(s)} bars")
 
     if args.analyze_technical:
         if not args.symbol:
             print("ERROR: --analyze-technical requires --symbol")
         else:
-            repo = MarketDataRepository(db_path=db_path)
-            bars = repo.get_bars(args.symbol)
+            bars = MarketDataRepository(db_path=db_path).get_bars(args.symbol)
             if bars.empty:
-                print(f"No bars for {args.symbol} in {db_path}")
+                print(f"No bars for {args.symbol}")
             else:
-                eng = TechnicalEngine()
-                snap = eng.compute(bars, symbol=args.symbol)
+                snap = TechnicalEngine().compute(bars, symbol=args.symbol)
                 print()
                 for line in snap.summary_lines():
                     print(line)
-
-    fund_db = args.fund_db or str(Path(settings.data_dir) / "nepse_fundamentals.db")
 
     if args.ingest_fundamentals_csv:
         store = FundamentalStore(db_path=fund_db)
@@ -141,34 +137,27 @@ def main() -> None:
         if not args.symbol:
             print("ERROR: --analyze-fundamental requires --symbol")
         else:
-            store = FundamentalStore(db_path=fund_db)
-            eng = FundamentalEngine(store)
-            snap = eng.compute(args.symbol, price=args.price)
+            snap = FundamentalEngine(FundamentalStore(db_path=fund_db)).compute(
+                args.symbol, price=args.price
+            )
             print()
             for line in snap.summary_lines():
                 print(line)
 
-    bench_db = args.benchmark_db or str(Path(settings.data_dir) / "nepse_benchmarks.db")
-
     if args.ingest_benchmark_csv:
         bstore = BenchmarkStore(db_path=bench_db)
-        n = load_benchmark_csv(
-            args.ingest_benchmark_csv, bstore, benchmark_id=args.benchmark_id
-        )
-        print(f"\nIngested {n} benchmark bars for {args.benchmark_id} into {bench_db}")
+        n = load_benchmark_csv(args.ingest_benchmark_csv, bstore, benchmark_id=args.benchmark_id)
+        print(f"\nIngested {n} benchmark bars for {args.benchmark_id}")
         print(f"Benchmarks: {bstore.list_benchmarks()}")
 
     if args.analyze_market:
         if not args.symbol:
             print("ERROR: --analyze-market requires --symbol")
         else:
-            repo = MarketDataRepository(db_path=db_path)
-            bars = repo.get_bars(args.symbol)
+            bars = MarketDataRepository(db_path=db_path).get_bars(args.symbol)
             if bars.empty:
-                print(f"No OHLCV for {args.symbol} in {db_path}")
+                print(f"No OHLCV for {args.symbol}")
             else:
-                bstore = BenchmarkStore(db_path=bench_db)
-                eng = MarketAnalysisEngine(benchmarks=bstore)
                 sector = args.sector
                 if sector is None:
                     try:
@@ -177,10 +166,49 @@ def main() -> None:
                             sector = prof.sector.value
                     except Exception:
                         pass
-                snap = eng.analyze_symbol(args.symbol, bars, sector=sector)
+                snap = MarketAnalysisEngine(BenchmarkStore(db_path=bench_db)).analyze_symbol(
+                    args.symbol, bars, sector=sector
+                )
                 print()
                 for line in snap.summary_lines():
                     print(line)
+
+    if args.analyze_signal:
+        if not args.symbol:
+            print("ERROR: --analyze-signal requires --symbol")
+        else:
+            repo = MarketDataRepository(db_path=db_path)
+            bars = repo.get_bars(args.symbol)
+            tech = TechnicalEngine().compute(bars, symbol=args.symbol) if not bars.empty else None
+            fund = None
+            try:
+                fund = FundamentalEngine(FundamentalStore(db_path=fund_db)).compute(
+                    args.symbol, price=args.price or (tech.price if tech else None)
+                )
+            except Exception:
+                pass
+            mkt = None
+            try:
+                sector = args.sector
+                if sector is None:
+                    try:
+                        prof = FundamentalStore(db_path=fund_db).get_profile(args.symbol)
+                        if prof:
+                            sector = prof.sector.value
+                    except Exception:
+                        pass
+                if tech is not None and not bars.empty:
+                    mkt = MarketAnalysisEngine(BenchmarkStore(db_path=bench_db)).analyze_symbol(
+                        args.symbol, bars, sector=sector
+                    )
+            except Exception:
+                pass
+            report = SignalEngine(_load_signal_config()).evaluate(
+                args.symbol, technical=tech, fundamental=fund, market=mkt, price=args.price
+            )
+            print()
+            for line in report.summary_lines():
+                print(line)
 
     log.info("CLI finished")
 
