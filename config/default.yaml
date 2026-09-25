@@ -1,0 +1,60 @@
+# NEPSE Bot default configuration
+# Override via environment variables or a local config file.
+# All monetary values are in NPR unless noted.
+
+bot:
+  name: nepse_bot
+  mode: paper             # research | backtest | paper | live (live blocked)
+  timezone: Asia/Kathmandu
+
+market:
+  exchange: NEPSE
+  continuous_open: "11:00"
+  continuous_close: "15:00"
+  trading_weekdays: [0, 1, 2, 3, 4]
+  daily_price_limit_pct: 15.0
+
+costs:
+  commission_slabs:
+    - [50000, 0.36]
+    - [500000, 0.33]
+    - [2000000, 0.31]
+    - [10000000, 0.27]
+    - [null, 0.24]
+  sebon_fee_pct: 0.015
+  dp_charge_npr: 25.0
+  cgt_short_term_pct: 10.0
+  cgt_long_term_pct: 7.5
+  slippage_pct: 0.10
+
+risk:
+  max_risk_per_trade_pct: 1.0
+  max_daily_loss_pct: 3.0
+  max_open_positions: 3
+  max_position_size_pct: 20.0
+  max_order_frequency_per_minute: 10
+  emergency_kill_switch: false
+
+universe:
+  default_symbols:
+    - NABIL
+    - NICA
+    - SCB
+    - EBL
+    - NBL
+    - ADBL
+    - NMB
+    - SANIMA
+    - KBL
+    - GBIME
+
+data:
+  storage_dir: data/storage
+  log_dir: logs
+
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  rotation: daily
+  retention_days: 14
