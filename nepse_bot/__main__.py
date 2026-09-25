@@ -8,6 +8,8 @@ Usage:
   python -m nepse_bot --ingest-csv data/samples/NABIL_sample.csv --symbol NABIL
   python -m nepse_bot --list-symbols
   python -m nepse_bot --analyze-technical --symbol NABIL
+  python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sample.csv
+  python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
 """
 
 from __future__ import annotations
@@ -21,6 +23,9 @@ from nepse_bot.data.repository import MarketDataRepository
 from nepse_bot.market.costs import TransactionCostModel
 from nepse_bot.market.hours import MarketHours
 from nepse_bot.indicators.engine import TechnicalEngine
+from nepse_bot.fundamentals.engine import FundamentalEngine
+from nepse_bot.fundamentals.loader import load_fundamentals_csv
+from nepse_bot.fundamentals.store import FundamentalStore
 from nepse_bot.monitoring import setup_logging, get_logger
 
 
@@ -34,6 +39,10 @@ def main() -> None:
     parser.add_argument("--list-symbols", action="store_true")
     parser.add_argument("--db", default=None)
     parser.add_argument("--analyze-technical", action="store_true")
+    parser.add_argument("--analyze-fundamental", action="store_true")
+    parser.add_argument("--ingest-fundamentals-csv", metavar="PATH")
+    parser.add_argument("--price", type=float, default=None, help="Last price for valuation ratios")
+    parser.add_argument("--fund-db", default=None)
     args = parser.parse_args()
 
     settings = get_settings(reload=True)
@@ -47,6 +56,8 @@ def main() -> None:
         args.ingest_csv,
         args.list_symbols,
         args.analyze_technical,
+        args.analyze_fundamental,
+        args.ingest_fundamentals_csv,
     ])
     if args.show_config or no_action:
         market = settings.market()
@@ -104,6 +115,26 @@ def main() -> None:
                 print()
                 for line in snap.summary_lines():
                     print(line)
+
+    fund_db = args.fund_db or str(Path(settings.data_dir) / "nepse_fundamentals.db")
+
+    if args.ingest_fundamentals_csv:
+        store = FundamentalStore(db_path=fund_db)
+        n = load_fundamentals_csv(args.ingest_fundamentals_csv, store)
+        print(f"\nIngested {n} fundamental rows into {fund_db}")
+        for p in store.list_profiles():
+            print(f"  {p.symbol}: sector={p.sector.value}")
+
+    if args.analyze_fundamental:
+        if not args.symbol:
+            print("ERROR: --analyze-fundamental requires --symbol")
+        else:
+            store = FundamentalStore(db_path=fund_db)
+            eng = FundamentalEngine(store)
+            snap = eng.compute(args.symbol, price=args.price)
+            print()
+            for line in snap.summary_lines():
+                print(line)
 
     log.info("CLI finished")
 
