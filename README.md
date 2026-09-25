@@ -35,11 +35,10 @@ See [docs/SPEC.md](docs/SPEC.md) for complete requirements.
 | 1 — Skeleton, config, logging, hours, costs | Done |
 | 2 — Data layer (CSV ingest, clean, SQLite) | Done |
 | 3 — Indicators + technical engine | **Done** |
-| 4 — Fundamental + valuation engine | Next |
+| 4 — Fundamental + valuation engine | **Done** |
+| 5 — Market / sector analysis | Next |
 | Real-time feed + event pipeline | Planned (see SPEC §2, §5) |
-| 5+ — Signal rules, scanner, risk, paper, dashboard | Planned |
-
-**Note:** Phase 3 is batch technical analysis on historical OHLCV. Real-time concurrent scanning is specified in SPEC and not yet implemented.
+| 6+ — Signal rules, scanner, risk, paper, dashboard | Planned |
 
 ---
 
@@ -64,6 +63,8 @@ python scripts/generate_sample_ohlcv.py --symbol NABIL --days 120
 python -m nepse_bot --ingest-csv data/samples/NABIL_sample.csv --symbol NABIL
 python -m nepse_bot --list-symbols
 python -m nepse_bot --analyze-technical --symbol NABIL
+python -m nepse_bot --ingest-fundamentals-csv data/samples/NABIL_fundamentals_sample.csv
+python -m nepse_bot --analyze-fundamental --symbol NABIL --price 500
 ```
 
 ## Tests
